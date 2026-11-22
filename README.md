@@ -11,7 +11,7 @@ ScholarConf is a full-stack, enterprise-grade Academic Conference Management Sys
 | **Frontend Application** | **Vercel** | [https://scholar-conf.vercel.app](https://scholar-conf.vercel.app) | 🟢 Live |
 | **Backend REST API** | **Render** | [https://scholarconf.onrender.com](https://scholarconf.onrender.com) | 🟢 Live |
 | **API Health Check** | **Render** | [https://scholarconf.onrender.com/api/health](https://scholarconf.onrender.com/api/health) | 🟢 Online |
-| **Email Service** | **Gmail SMTP** | `scholarconf.moyukh@gmail.com` | 🟢 Active (Sends to ANY email) |
+| **Email Service** | **Brevo HTTPS API** | `scholarconf.moyukh@gmail.com` | 🟢 Active (Sends to ANY email) |
 
 ---
 

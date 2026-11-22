@@ -13,11 +13,11 @@ services:
         value: 10000
       - key: CLIENT_URL
         sync: false
-      - key: GMAIL_USER
+      - key: BREVO_API_KEY
         sync: false
-      - key: GMAIL_APP_PASSWORD
-        sync: false
-      - key: EMAIL_FROM
-        value: ScholarConf <scholarconf.moyukh@gmail.com>
+      - key: SENDER_EMAIL
+        value: scholarconf.moyukh@gmail.com
+      - key: SENDER_NAME
+        value: ScholarConf
       - key: JWT_SECRET
         generateValue: true

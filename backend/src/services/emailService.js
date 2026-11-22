@@ -1,4 +1,3 @@
-import nodemailer from 'nodemailer';
 import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
 import { db } from '../config/firebase.js';
 import {
@@ -18,21 +17,11 @@ import {
 import { verificationEmailTemplate, passwordResetTemplate } from '../templates/authTemplates.js';
 import { reviewerInvitationTemplate, coAuthorInvitationTemplate } from '../templates/inviteTemplates.js';
 
-const GMAIL_USER = process.env.GMAIL_USER || 'scholarconf.moyukh@gmail.com';
-const GMAIL_APP_PASSWORD = (process.env.GMAIL_APP_PASSWORD || 'iezzoaiyhoevqsxs').replace(/\s+/g, '');
-export const isEmailConfigured = Boolean(GMAIL_USER && GMAIL_APP_PASSWORD);
+const BREVO_API_KEY = process.env.BREVO_API_KEY;
+const SENDER_EMAIL = process.env.SENDER_EMAIL || process.env.GMAIL_USER || 'scholarconf.moyukh@gmail.com';
+const SENDER_NAME = process.env.SENDER_NAME || 'ScholarConf';
 
-const mailTransporter = isEmailConfigured
-  ? nodemailer.createTransport({
-      service: 'gmail',
-      auth: {
-        user: GMAIL_USER,
-        pass: GMAIL_APP_PASSWORD,
-      },
-    })
-  : null;
-
-const DEFAULT_FROM = process.env.EMAIL_FROM || `ScholarConf <${GMAIL_USER}>`;
+export const isEmailConfigured = Boolean(BREVO_API_KEY);
 
 /**
  * Record email delivery attempt / status in Firestore for debugging
@@ -55,48 +44,75 @@ async function logEmailDelivery({ to, subject, eventType, status, providerId, er
 }
 
 /**
- * Universal dispatcher for emails via Gmail SMTP with delivery logging
+ * Universal dispatcher for emails via Brevo HTTPS REST API (Port 443 - never blocked by Render)
  */
 export async function sendEmail({ to, subject, html, eventType = 'notification' }) {
   if (!to) return { status: 'skipped', reason: 'No recipient email provided' };
 
-  // 1. Send via Gmail SMTP if configured
-  if (isEmailConfigured && mailTransporter) {
-    try {
-      const recipient = Array.isArray(to) ? to.join(', ') : to;
-      const info = await mailTransporter.sendMail({
-        from: DEFAULT_FROM,
-        to: recipient,
-        subject,
-        html,
-      });
+  if (!isEmailConfigured) {
+    console.log(`\n📬 [EMAIL SIMULATION] (${eventType}) To: ${to} | Subject: ${subject}`);
+    await logEmailDelivery({ to, subject, eventType, status: 'simulated' });
+    return { id: 'sim_' + Date.now(), status: 'simulated' };
+  }
 
-      console.log(`✅ Live Email dispatched to ${recipient} [ID: ${info.messageId}]`);
-      await logEmailDelivery({
-        to,
+  const recipients = Array.isArray(to)
+    ? to.map(e => ({ email: typeof e === 'string' ? e : e.email }))
+    : [{ email: to }];
+
+  try {
+    const response = await fetch('https://api.brevo.com/v3/smtp/email', {
+      method: 'POST',
+      headers: {
+        'accept': 'application/json',
+        'api-key': BREVO_API_KEY,
+        'content-type': 'application/json',
+      },
+      body: JSON.stringify({
+        sender: {
+          name: SENDER_NAME,
+          email: SENDER_EMAIL,
+        },
+        to: recipients,
         subject,
-        eventType,
-        status: 'delivered',
-        providerId: info.messageId,
-      });
-      return { id: info.messageId, status: 'delivered', provider: 'gmail_smtp' };
-    } catch (err) {
-      console.error('❌ Email dispatch exception:', err.message);
+        htmlContent: html,
+      }),
+    });
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      console.error('❌ Brevo API error:', data);
       await logEmailDelivery({
         to,
         subject,
         eventType,
         status: 'error',
-        errorMsg: err.message,
+        errorMsg: data.message || JSON.stringify(data),
       });
-      return { status: 'error', error: err.message };
+      return { status: 'error', error: data.message };
     }
-  }
 
-  // 2. Fallback: Simulation mode
-  console.log(`\n📬 [EMAIL SIMULATION] (${eventType}) To: ${to} | Subject: ${subject}`);
-  await logEmailDelivery({ to, subject, eventType, status: 'simulated' });
-  return { id: 'sim_' + Date.now(), status: 'simulated' };
+    const messageId = data.messageId || ('brevo_' + Date.now());
+    console.log(`✅ Live Brevo Email dispatched to ${JSON.stringify(to)} [ID: ${messageId}]`);
+    await logEmailDelivery({
+      to,
+      subject,
+      eventType,
+      status: 'delivered',
+      providerId: messageId,
+    });
+    return { id: messageId, status: 'delivered', provider: 'brevo' };
+  } catch (err) {
+    console.error('❌ Email dispatch exception:', err.message);
+    await logEmailDelivery({
+      to,
+      subject,
+      eventType,
+      status: 'error',
+      errorMsg: err.message,
+    });
+    return { status: 'error', error: err.message };
+  }
 }
 
 // 1. Welcome Email After Registration

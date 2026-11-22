@@ -21,7 +21,7 @@ app.get('/api/health', (req, res) => {
     service: 'ScholarConf – Conference Management Toolkit Backend',
     emailConfigured: isEmailConfigured,
     mode: isEmailConfigured
-      ? 'Live Email Delivery (Gmail SMTP - sends to ANY email)'
+      ? 'Live Email Delivery (Brevo HTTPS API - sends to ANY email)'
       : 'Simulation Mode (Console Output)',
   });
 });
@@ -33,6 +33,6 @@ app.use('/api/scholarconf', scholarConfRoutes);
 
 app.listen(PORT, () => {
   console.log(`\n🚀 ScholarConf Backend Server running on http://localhost:${PORT}`);
-  console.log(`📡 Email Service Mode: ${isEmailConfigured ? '🟢 LIVE (Gmail SMTP)' : '🟡 SIMULATION (Console Output)'}`);
+  console.log(`📡 Email Service Mode: ${isEmailConfigured ? '🟢 LIVE (Brevo HTTPS API)' : '🟡 SIMULATION (Console Output)'}`);
   console.log(`🔗 Health Check: http://localhost:${PORT}/api/health\n`);
 });
