@@ -1,3 +1,4 @@
+import nodemailer from 'nodemailer';
 import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
 import { resend, isResendConfigured } from '../config/resend.js';
 import { db } from '../config/firebase.js';
@@ -18,7 +19,21 @@ import {
 import { verificationEmailTemplate, passwordResetTemplate } from '../templates/authTemplates.js';
 import { reviewerInvitationTemplate, coAuthorInvitationTemplate } from '../templates/inviteTemplates.js';
 
-const DEFAULT_FROM = process.env.EMAIL_FROM || 'ScholarConf <onboarding@resend.dev>';
+const GMAIL_USER = process.env.GMAIL_USER || 'scholarconf.moyukh@gmail.com';
+const GMAIL_APP_PASSWORD = (process.env.GMAIL_APP_PASSWORD || 'iezzoaiyhoevqsxs').replace(/\s+/g, '');
+export const isGmailConfigured = Boolean(GMAIL_USER && GMAIL_APP_PASSWORD);
+
+const gmailTransporter = isGmailConfigured
+  ? nodemailer.createTransport({
+      service: 'gmail',
+      auth: {
+        user: GMAIL_USER,
+        pass: GMAIL_APP_PASSWORD,
+      },
+    })
+  : null;
+
+const DEFAULT_FROM = process.env.EMAIL_FROM || (isGmailConfigured ? `ScholarConf <${GMAIL_USER}>` : 'ScholarConf <onboarding@resend.dev>');
 
 /**
  * Record email delivery attempt / status in Firestore for debugging
@@ -41,63 +56,96 @@ async function logEmailDelivery({ to, subject, eventType, status, providerId, er
 }
 
 /**
- * Universal dispatcher for emails via Resend with delivery logging
+ * Universal dispatcher for emails via Gmail SMTP or Resend with delivery logging
  */
 export async function sendEmail({ to, subject, html, eventType = 'notification' }) {
   if (!to) return { status: 'skipped', reason: 'No recipient email provided' };
 
-  if (!isResendConfigured) {
-    console.log(`\n📬 [EMAIL SIMULATION] (${eventType}) To: ${to} | Subject: ${subject}`);
-    await logEmailDelivery({ to, subject, eventType, status: 'simulated' });
-    return { id: 'sim_' + Date.now(), status: 'simulated' };
-  }
+  // 1. Try Gmail SMTP first if configured (can send to ANY email address with no custom domain required)
+  if (isGmailConfigured && gmailTransporter) {
+    try {
+      const recipient = Array.isArray(to) ? to.join(', ') : to;
+      const info = await gmailTransporter.sendMail({
+        from: `ScholarConf <${GMAIL_USER}>`,
+        to: recipient,
+        subject,
+        html,
+      });
 
-  try {
-    const { data, error } = await resend.emails.send({
-      from: DEFAULT_FROM,
-      to: Array.isArray(to) ? to : [to],
-      subject,
-      html,
-    });
-
-    if (error) {
-      // Note: On Resend free sandbox (onboarding@resend.dev), sending to unverified external addresses returns a 403 validation_error.
-      // Log it cleanly without crashing the transaction so the workflow continues smoothly.
-      console.warn(`⚠️ Resend Notice for [${to}]: ${error.message}`);
+      console.log(`✅ Live Gmail SMTP Email dispatched to ${recipient} [ID: ${info.messageId}]`);
       await logEmailDelivery({
         to,
         subject,
         eventType,
-        status: 'sandbox_restricted',
-        errorMsg: error.message,
+        status: 'delivered',
+        providerId: info.messageId,
       });
-      return {
-        id: 'sandbox_' + Date.now(),
-        status: 'sandbox_logged',
-        notice: error.message,
-      };
+      return { id: info.messageId, status: 'delivered', provider: 'gmail_smtp' };
+    } catch (err) {
+      console.error('❌ Gmail SMTP dispatch exception:', err.message);
+      await logEmailDelivery({
+        to,
+        subject,
+        eventType,
+        status: 'gmail_error',
+        errorMsg: err.message,
+      });
+      // Fall through to Resend
     }
-
-    console.log(`✅ Live Resend Email dispatched to ${to} [ID: ${data.id}]`);
-    await logEmailDelivery({
-      to,
-      subject,
-      eventType,
-      status: 'delivered',
-      providerId: data.id,
-    });
-    return { id: data.id, status: 'delivered' };
-  } catch (err) {
-    console.error('❌ Email dispatch exception:', err.message);
-    await logEmailDelivery({
-      to,
-      subject,
-      eventType,
-      status: 'error',
-      errorMsg: err.message,
-    });
-    return { status: 'error', error: err.message };
   }
+
+  // 2. Try Resend if Gmail is not configured or failed
+  if (isResendConfigured) {
+    try {
+      const { data, error } = await resend.emails.send({
+        from: DEFAULT_FROM,
+        to: Array.isArray(to) ? to : [to],
+        subject,
+        html,
+      });
+
+      if (error) {
+        console.warn(`⚠️ Resend Notice for [${to}]: ${error.message}`);
+        await logEmailDelivery({
+          to,
+          subject,
+          eventType,
+          status: 'sandbox_restricted',
+          errorMsg: error.message,
+        });
+        return {
+          id: 'sandbox_' + Date.now(),
+          status: 'sandbox_logged',
+          notice: error.message,
+        };
+      }
+
+      console.log(`✅ Live Resend Email dispatched to ${to} [ID: ${data.id}]`);
+      await logEmailDelivery({
+        to,
+        subject,
+        eventType,
+        status: 'delivered',
+        providerId: data.id,
+      });
+      return { id: data.id, status: 'delivered', provider: 'resend' };
+    } catch (err) {
+      console.error('❌ Resend dispatch exception:', err.message);
+      await logEmailDelivery({
+        to,
+        subject,
+        eventType,
+        status: 'error',
+        errorMsg: err.message,
+      });
+      return { status: 'error', error: err.message };
+    }
+  }
+
+  // 3. Fallback: Simulation mode
+  console.log(`\n📬 [EMAIL SIMULATION] (${eventType}) To: ${to} | Subject: ${subject}`);
+  await logEmailDelivery({ to, subject, eventType, status: 'simulated' });
+  return { id: 'sim_' + Date.now(), status: 'simulated' };
 }
 
 // 1. Welcome Email After Registration
