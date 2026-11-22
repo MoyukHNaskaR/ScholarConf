@@ -112,7 +112,7 @@ export default function SubmitPaperPage() {
         currentUser?.uid
       );
 
-      // 2. Save Paper Submission via Backend (triggers notifications & Resend emails)
+      // 2. Save Paper Submission via Backend (triggers notifications & emails)
       const res = await submitNewPaper({
         conferenceId,
         title: title.trim(),

@@ -302,7 +302,7 @@ router.post('/conference-requests', verifyAuthToken, async (req, res) => {
       message: `${chairName} (${organizationName}) submitted a request for "${fullConfName}".`,
     });
 
-    // Notify requester via Resend Email
+    // Notify requester via Email
     await sendConferenceRequestReceivedEmail({
       email: req.user.email,
       chairName,
@@ -394,7 +394,7 @@ router.post(
           });
         });
 
-        // Send in-app notification & Resend email to Chair
+        // Send in-app notification & email to Chair
         await createNotification({
           userId: reqData.requestedBy,
           userEmail: reqData.requesterEmail,
@@ -598,7 +598,7 @@ router.post('/papers', verifyAuthToken, async (req, res) => {
       joinedAt: new Date().toISOString(),
     });
 
-    // Notify Author (In-app + Resend Email)
+    // Notify Author (In-app + Email)
     await createNotification({
       userId: req.user.uid,
       userEmail: req.user.email,
@@ -619,7 +619,7 @@ router.post('/papers', verifyAuthToken, async (req, res) => {
       conferenceId,
     });
 
-    // Notify Conference Chair (In-app + Resend Email)
+    // Notify Conference Chair (In-app + Email)
     await createNotification({
       userId: conf.chairId,
       userEmail: conf.chairEmail,
@@ -996,7 +996,7 @@ router.post('/reviews', verifyAuthToken, async (req, res) => {
         message: `Your evaluation for "${paper.paperNumber || paper.paperId} - ${paper.title}" has been recorded.`,
       });
 
-      // Notify Chair in-app & via Resend email
+      // Notify Chair in-app & via email
       const confSnap = await getDoc(doc(db, 'conferences', paper.conferenceId));
       const conf = confSnap.exists() ? confSnap.data() : {};
 
@@ -1100,7 +1100,7 @@ router.post('/papers/:paperId/decision', verifyAuthToken, async (req, res) => {
       )
       .join('<br/>');
 
-    // Notify Author in-app & via Resend Email
+    // Notify Author in-app & via Email
     await createNotification({
       userId: paper.submittedBy,
       userEmail: paper.submitterEmail,

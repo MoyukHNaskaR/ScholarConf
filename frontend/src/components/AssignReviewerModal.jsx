@@ -79,7 +79,7 @@ export default function AssignReviewerModal({ paper, onClose, onAssigned }) {
           <div className="sc-form-group">
             <label className="sc-label">Reviewers to Assign</label>
             <p className="sc-helper-text">
-              Existing ScholarConf users will be assigned immediately. Users without an account will receive an automated Resend email invitation.
+              Existing ScholarConf users will be assigned immediately. Users without an account will receive an automated email invitation.
             </p>
 
             {reviewers.map((rev, index) => (
