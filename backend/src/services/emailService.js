@@ -1,6 +1,5 @@
 import nodemailer from 'nodemailer';
 import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
-import { resend, isResendConfigured } from '../config/resend.js';
 import { db } from '../config/firebase.js';
 import {
   welcomeTemplate,
@@ -21,9 +20,9 @@ import { reviewerInvitationTemplate, coAuthorInvitationTemplate } from '../templ
 
 const GMAIL_USER = process.env.GMAIL_USER || 'scholarconf.moyukh@gmail.com';
 const GMAIL_APP_PASSWORD = (process.env.GMAIL_APP_PASSWORD || 'iezzoaiyhoevqsxs').replace(/\s+/g, '');
-export const isGmailConfigured = Boolean(GMAIL_USER && GMAIL_APP_PASSWORD);
+export const isEmailConfigured = Boolean(GMAIL_USER && GMAIL_APP_PASSWORD);
 
-const gmailTransporter = isGmailConfigured
+const mailTransporter = isEmailConfigured
   ? nodemailer.createTransport({
       service: 'gmail',
       auth: {
@@ -33,7 +32,7 @@ const gmailTransporter = isGmailConfigured
     })
   : null;
 
-const DEFAULT_FROM = process.env.EMAIL_FROM || (isGmailConfigured ? `ScholarConf <${GMAIL_USER}>` : 'ScholarConf <onboarding@resend.dev>');
+const DEFAULT_FROM = process.env.EMAIL_FROM || `ScholarConf <${GMAIL_USER}>`;
 
 /**
  * Record email delivery attempt / status in Firestore for debugging
@@ -56,23 +55,23 @@ async function logEmailDelivery({ to, subject, eventType, status, providerId, er
 }
 
 /**
- * Universal dispatcher for emails via Gmail SMTP or Resend with delivery logging
+ * Universal dispatcher for emails via Gmail SMTP with delivery logging
  */
 export async function sendEmail({ to, subject, html, eventType = 'notification' }) {
   if (!to) return { status: 'skipped', reason: 'No recipient email provided' };
 
-  // 1. Try Gmail SMTP first if configured (can send to ANY email address with no custom domain required)
-  if (isGmailConfigured && gmailTransporter) {
+  // 1. Send via Gmail SMTP if configured
+  if (isEmailConfigured && mailTransporter) {
     try {
       const recipient = Array.isArray(to) ? to.join(', ') : to;
-      const info = await gmailTransporter.sendMail({
-        from: `ScholarConf <${GMAIL_USER}>`,
+      const info = await mailTransporter.sendMail({
+        from: DEFAULT_FROM,
         to: recipient,
         subject,
         html,
       });
 
-      console.log(`✅ Live Gmail SMTP Email dispatched to ${recipient} [ID: ${info.messageId}]`);
+      console.log(`✅ Live Email dispatched to ${recipient} [ID: ${info.messageId}]`);
       await logEmailDelivery({
         to,
         subject,
@@ -82,55 +81,7 @@ export async function sendEmail({ to, subject, html, eventType = 'notification' 
       });
       return { id: info.messageId, status: 'delivered', provider: 'gmail_smtp' };
     } catch (err) {
-      console.error('❌ Gmail SMTP dispatch exception:', err.message);
-      await logEmailDelivery({
-        to,
-        subject,
-        eventType,
-        status: 'gmail_error',
-        errorMsg: err.message,
-      });
-      // Fall through to Resend
-    }
-  }
-
-  // 2. Try Resend if Gmail is not configured or failed
-  if (isResendConfigured) {
-    try {
-      const { data, error } = await resend.emails.send({
-        from: DEFAULT_FROM,
-        to: Array.isArray(to) ? to : [to],
-        subject,
-        html,
-      });
-
-      if (error) {
-        console.warn(`⚠️ Resend Notice for [${to}]: ${error.message}`);
-        await logEmailDelivery({
-          to,
-          subject,
-          eventType,
-          status: 'sandbox_restricted',
-          errorMsg: error.message,
-        });
-        return {
-          id: 'sandbox_' + Date.now(),
-          status: 'sandbox_logged',
-          notice: error.message,
-        };
-      }
-
-      console.log(`✅ Live Resend Email dispatched to ${to} [ID: ${data.id}]`);
-      await logEmailDelivery({
-        to,
-        subject,
-        eventType,
-        status: 'delivered',
-        providerId: data.id,
-      });
-      return { id: data.id, status: 'delivered', provider: 'resend' };
-    } catch (err) {
-      console.error('❌ Resend dispatch exception:', err.message);
+      console.error('❌ Email dispatch exception:', err.message);
       await logEmailDelivery({
         to,
         subject,
@@ -142,7 +93,7 @@ export async function sendEmail({ to, subject, html, eventType = 'notification' 
     }
   }
 
-  // 3. Fallback: Simulation mode
+  // 2. Fallback: Simulation mode
   console.log(`\n📬 [EMAIL SIMULATION] (${eventType}) To: ${to} | Subject: ${subject}`);
   await logEmailDelivery({ to, subject, eventType, status: 'simulated' });
   return { id: 'sim_' + Date.now(), status: 'simulated' };

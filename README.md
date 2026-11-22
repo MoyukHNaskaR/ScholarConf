@@ -1,6 +1,6 @@
 # ScholarConf – Academic Conference Management Toolkit
 
-A full-stack Academic Conference Management System built with **React.js**, **Node.js / Express.js**, **Firebase (Authentication, Firestore, Storage)**, and **Resend Email Automation**.
+A full-stack Academic Conference Management System built with **React.js**, **Node.js / Express.js**, **Firebase (Authentication, Firestore, Storage)**, and **Automated Email Notifications (Gmail SMTP / Nodemailer)**.
 
 ---
 

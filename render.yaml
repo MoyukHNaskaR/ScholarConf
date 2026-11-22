@@ -13,9 +13,11 @@ services:
         value: 10000
       - key: CLIENT_URL
         sync: false
-      - key: RESEND_API_KEY
+      - key: GMAIL_USER
+        sync: false
+      - key: GMAIL_APP_PASSWORD
         sync: false
       - key: EMAIL_FROM
-        value: ScholarConf <onboarding@resend.dev>
+        value: ScholarConf <scholarconf.moyukh@gmail.com>
       - key: JWT_SECRET
         generateValue: true
