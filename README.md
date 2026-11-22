@@ -1,18 +1,23 @@
 # ScholarConf – Academic Conference Management Toolkit
 
-A full-stack Academic Conference Management System built with **React.js**, **Node.js / Express.js**, **Firebase (Authentication, Firestore, Storage)**, and **Automated Email Notifications (Gmail SMTP / Nodemailer)**.
+ScholarConf is a full-stack, enterprise-grade Academic Conference Management System inspired by Microsoft CMT. It provides end-to-end management for academic research conferences, including conference lifecycle administration, structured multi-reviewer peer evaluation, dynamic track routing, role-based workflows, manuscript uploads, and automated transactional email notifications.
 
 ---
 
-## 🌐 Live Local Servers
-- **Frontend Application:** `http://localhost:5173`
-- **Backend Express API:** `http://localhost:5000`
+## 🌐 Live Production Deployments
+
+| Component | Provider | Live URL | Status |
+| :--- | :--- | :--- | :--- |
+| **Frontend Application** | **Vercel** | [https://scholar-conf.vercel.app](https://scholar-conf.vercel.app) | 🟢 Live |
+| **Backend REST API** | **Render** | [https://scholarconf.onrender.com](https://scholarconf.onrender.com) | 🟢 Live |
+| **API Health Check** | **Render** | [https://scholarconf.onrender.com/api/health](https://scholarconf.onrender.com/api/health) | 🟢 Online |
+| **Email Service** | **Gmail SMTP** | `scholarconf.moyukh@gmail.com` | 🟢 Active (Sends to ANY email) |
 
 ---
 
 ## 🔑 Pre-Seeded Accounts for Testing All 4 Roles
 
-The following accounts are already registered in Firebase Authentication & Cloud Firestore and linked to sample prototype data in **ICML 2026**:
+The following accounts are registered in Firebase Authentication & Cloud Firestore and linked to sample prototype data in **ICML 2026**:
 
 | Role | Email | Password | Console Destination |
 | :--- | :--- | :--- | :--- |
@@ -21,18 +26,61 @@ The following accounts are already registered in Firebase Authentication & Cloud
 | **Reviewer** | `reviewer@scholarconf.com` | `Password123!` | **Reviewer Console** (clicking *ICML 2026*) |
 | **Author** | `author@scholarconf.com` | `Password123!` | **Author Console** (clicking *ICML 2026*) |
 
-*You can also sign in with **Google Sign-In** or register any new email account.*
+> *Note: You can also register any new personal email or sign in with **Google Sign-In**.*
 
 ---
 
-## 📄 Implemented Pages & Workflows
+## 🚀 Key Features & Implemented Workflows
 
-1. **Public Landing Page (`/`)**: Hero section, Program Chair / Authors / Reviewers feature cards, Explore Features CTA, and Login / Get Started navigation.
-2. **Authentication Page (`/login`)**: Email/Password login, Signup, Password Reset, and Google OAuth Sign-In.
-3. **Home Dashboard (`/dashboard`)**: Left sidebar navigation, unread notification bell, Create Conference button, active approved conferences listing, and **automatic conference-specific role routing** (Chair $\rightarrow$ Chair Console, Reviewer $\rightarrow$ Reviewer Console, Author/Default $\rightarrow$ Author Console — with no manual role switcher).
-4. **Create Conference Form (`/create-conference`)**: Organization Name, Slug, Chair Name, dynamic Tracks (`+ Add Another Track` / Remove), submitting a `Pending Approval` request.
-5. **Super Admin Console (`/super-admin`)**: 4 metric cards, status tabs, search & year filter, and `Approve` / `Reject` / `Archive` actions with Firestore transactions assigning the sole Conference Chair.
-6. **Chair Console (`/conference/:id/chair`)**: 4 metric cards, status tabs, track filter, `Assign Reviewer` popup modal supporting multiple reviewers, automatic status transitions (`Reviewer to be Assigned` $\rightarrow$ `Under Review` $\rightarrow$ `Reviewed`), and Final Decision (`Accept Paper` / `Reject Paper`).
-7. **Reviewer Console (`/conference/:id/reviewer`)**: Restricted strictly to papers assigned to the logged-in reviewer. Includes structured peer review modal with 1–5 ratings (Originality, Technical Quality, Presentation), Overall Recommendation, Strengths, Weaknesses, Detailed Comments, `Save Draft`, and `Submit Review`.
-8. **Author Console (`/conference/:id/author`)**: Displays the author's own submissions, real-time review status badges, anonymized peer feedback viewer, and `+ Submit New Paper` button.
-9. **Submit New Paper Form (`/conference/:id/submit`)**: Paper Title, Conference Track dropdown, 300-word validated Abstract, dynamic Co-Authors rows, and PDF Manuscript upload to Firebase Storage.
+1. **Public Landing Page (`/`)**: Hero section, Program Chair / Author / Reviewer feature cards, call-to-actions, and authentication portals.
+2. **Authentication (`/login`)**: Email/Password login, Signup, Password Reset with automated email notices, and Google OAuth Sign-In.
+3. **Conference Dashboard (`/dashboard`)**: Active approved conferences listing, real-time unread notification bell, and **automatic conference-specific role routing** (routes Chairs to Chair Console, Reviewers to Reviewer Console, Authors to Author Console).
+4. **Create Conference Form (`/create-conference`)**: Dynamic Tracks manager (`+ Add Track` / Remove), organization name, slug, and submission for Super Admin approval.
+5. **Super Admin Console (`/super-admin`)**: Platform overview metric cards, status tabs (`Pending`, `Approved`, `Rejected`, `Archived`), search & filter, and single-click approval/rejection actions.
+6. **Chair Console (`/conference/:id/chair`)**: 
+   - Real-time submission tracking across conference tracks.
+   - **Assign Reviewers Modal**: Assign multiple reviewers per paper with automatic state transitions (`Reviewer to be Assigned` $\rightarrow$ `Under Review` $\rightarrow$ `Reviewed`).
+   - Automated reviewer invitation emails dispatched via Gmail SMTP.
+   - **Final Decision Publishing**: Accept or Reject paper with official decision letter emails to authors.
+7. **Reviewer Console (`/conference/:id/reviewer`)**: Restricted strictly to papers assigned to the logged-in reviewer. Features a structured peer review submission form with 1–5 scoring (Originality, Technical Quality, Presentation), Overall Recommendation, Strengths, Weaknesses, and Detailed Comments.
+8. **Author Console (`/conference/:id/author`)**: Tracks author submissions, real-time review status badges, anonymized peer feedback viewer, and paper submission entry point.
+9. **Submit New Paper (`/conference/:id/submit`)**: Paper Title, Conference Track dropdown, validated Abstract counter, dynamic Co-Authors rows, and manuscript PDF upload directly to Firebase Storage.
+10. **Automated Transactional Emails**: Powered by Nodemailer and Gmail SMTP to deliver live HTML notification emails to **any email address** worldwide for paper submissions, reviewer invites, and acceptance decisions.
+
+---
+
+## 🛠️ Technology Stack
+
+- **Frontend:** React 19, Vite, React Router 7, Tailwind CSS / Lucide React, Firebase Web SDK
+- **Backend:** Node.js, Express.js (ES Modules), Nodemailer (Gmail SMTP)
+- **Database & Storage:** Google Cloud Firestore (NoSQL), Firebase Storage (PDF manuscripts)
+- **Authentication:** Firebase Authentication (Email/Password & Google OAuth)
+- **Hosting & Infrastructure:** Vercel (Frontend SPA), Render (Backend Web Service)
+
+---
+
+## 💻 Local Development Setup
+
+### 1. Clone the Repository
+```bash
+git clone https://github.com/MoyukHNaskaR/ScholarConf.git
+cd ScholarConf
+```
+
+### 2. Configure Backend
+```bash
+cd backend
+npm install
+cp .env.example .env
+# Fill in your environment variables in .env
+npm run dev
+```
+Backend runs locally on `http://localhost:5000`.
+
+### 3. Configure Frontend
+```bash
+cd ../frontend
+npm install
+npm run dev
+```
+Frontend runs locally on `http://localhost:5173`.
